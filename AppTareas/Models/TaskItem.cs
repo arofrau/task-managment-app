@@ -50,7 +50,7 @@ namespace AppTareas.Models
         /// <summary>
         /// Date where the task was completed.
         /// </summary>
-        public DateOnly CompletedAt { get; set; }
+        public DateOnly? CompletedAt { get; set; }
         /// <summary>
         /// Marks if a task hasn't been completed and it had a due date
         /// </summary>

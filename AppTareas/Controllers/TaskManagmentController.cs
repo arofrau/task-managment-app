@@ -1,7 +1,10 @@
 ﻿using AppTareas.Models;
 using AppTareas.Service;
+using AppTareas.DTos;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using System.Net.WebSockets;
+using Mapster;
 
 
 namespace AppTareas.Controllers
@@ -15,41 +18,54 @@ namespace AppTareas.Controllers
         // TaskList
 
         // Get all TaskList
-        [HttpGet("/api/liststasks")] 
-        public ActionResult<List<TaskList>> GetAllTaskList() => TaskManagmentService.GetAllTasksLists();
+        [HttpGet("/api/liststasks")]
+        public ActionResult<List<TaskListResponse>> GetAllTaskList()
+        {
+            var taskslists = TaskManagmentService.GetAllTasksLists();
+            
+            return taskslists.Adapt<List<TaskListResponse>>();
+        }
 
         // Get specific TaskList with its taskItems
 
         [HttpGet("/api/liststasks/{id}")]
-        public ActionResult<TaskList> GetTaskList(int id)
+        public ActionResult<TaskListResponse> GetTaskList(int id)
         {
            var taskList = TaskManagmentService.GetTaskList(id);
             if (taskList == null)
                 return NotFound();
-            return taskList;
+            return taskList.Adapt<TaskListResponse>();
         }
 
 
 
         // Post create TaskList
         [HttpPost("/api/liststasks")]
-        public IActionResult CreateTaskList(TaskList taskList)
+        public IActionResult CreateTaskList(CreateTaskList taskListDto)
         {
+            var taskList = new TaskList
+            {
+                Name = taskListDto.Name,
+                Relevance = taskListDto.Relevance
+            };
             TaskManagmentService.AddTaskList(taskList);
-            return CreatedAtAction(nameof(GetTaskList), new { id = taskList.Id }, taskList);
+
+            var response = new TaskListResponse(taskList.Id, taskList.Name, taskList.Relevance, new List<TaskItem>());
+                
+            return CreatedAtAction(nameof(GetTaskList), new { id = taskList.Id }, response);
         }
         // Put update an existing TaskList
         [HttpPut("/api/liststasks/{id}")]
-        public IActionResult UpdateTaskList(int id,TaskList taskList)
+        public IActionResult UpdateTaskList(int id,UpdateTaskList dto)
         {
             //-> TO DO. Add 403 Forbidden
-            if(id != taskList.Id)
-                return BadRequest();
+
             var existingTaskList = TaskManagmentService.GetTaskList(id);
             if (existingTaskList == null)
                 return NotFound();
+            dto.Adapt(existingTaskList);
 
-            TaskManagmentService.UpdateTaskList(taskList);
+            TaskManagmentService.UpdateTaskList(existingTaskList);
 
             return NoContent();
 
@@ -71,32 +87,34 @@ namespace AppTareas.Controllers
         //TaskItem
         // Get specific TaskItem
         [HttpGet("/api/tasks/{id}")]
-        public ActionResult<TaskItem> GetTaskItem(int id)
+        public ActionResult<TaskItemResponse> GetTaskItem(int id)
         {
 
             var taskItem = TaskManagmentService.GetTaskItem(id);
             if (taskItem == null)
                 return NotFound();
-
-            return taskItem;
+            
+            return taskItem.Adapt<TaskItemResponse>();
         }
         // Post create a TaskItem
         [HttpPost("/api/tasks")]
-        public IActionResult CreateTaskItem(TaskItem taskItem)
+        public IActionResult CreateTaskItem(CreateTaskItem dto)
         {
+            var taskItem = dto.Adapt<TaskItem>();
             TaskManagmentService.AddTaskItem(taskItem);
-            return CreatedAtAction(nameof(GetTaskItem), new { id = taskItem.Id }, taskItem);
+            var response = taskItem.Adapt<TaskItemResponse>();
+            return CreatedAtAction(nameof(GetTaskItem), new { id = taskItem.Id }, response);
         }
         // Put Update specific TaskItem
         [HttpPut("/api/tasks/{id}")]
-        public IActionResult UpdateTaskItem(int id, TaskItem taskItem)
+        public IActionResult UpdateTaskItem(int id,  UpdateTaskItem dto)
         {
             //-> TO DO. Add 403 Forbidden
-
-            if (taskItem.Id != id)
-                return BadRequest();
+            var taskItem = TaskManagmentService.GetTaskItem(id);
+            
             if (taskItem == null)
                 return NotFound();
+            dto.Adapt(taskItem);
 
             TaskManagmentService.UpdateTaskItem(taskItem);
 
@@ -117,16 +135,21 @@ namespace AppTareas.Controllers
         }
         // Get all TaskItem that are due today
         [HttpGet("/api/myday")]
-        public ActionResult<List<TaskItem>> GetMyDayTask() => TaskManagmentService.GetAllDailyTask();
+        public ActionResult<List<TaskItemResponse>> GetMyDayTask()
+        {
+            var allDailyTask = TaskManagmentService.GetAllDailyTask();
+
+            return allDailyTask.Adapt<List<TaskItemResponse>>();
+        }
         // Get all subtasks
         [HttpGet("/api/tasks/{id}/subtasks")]
-        public ActionResult<List<TaskItem>> GetAllSubTask(int id)
+        public ActionResult<List<TaskItemResponse>> GetAllSubTask(int id)
         {
             var subtask = GetAllSubTask(id);
             if (subtask == null)
                 return NotFound();
-
-            return subtask;
+            
+            return subtask.Adapt<List<TaskItemResponse>>();
 
         }
 

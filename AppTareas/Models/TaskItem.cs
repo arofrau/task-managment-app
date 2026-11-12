@@ -10,10 +10,30 @@ namespace AppTareas.Models
         EveryTwoWeeks = 3,
         Monthly = 4,
         Annually = 5,
-        Woking_Days = 6 
+        No_Weekends = 6 
     };
     public class TaskItem
-    {   
+    {
+        private List<TaskItem> items;
+
+        public TaskItem()
+        {
+        }
+
+        public TaskItem(int id, string title, string? description, bool isTaskOverdue, DateTime? dueDate, DateTime? previousDueDate, DateOnly? myDayDate, Frecuency frecuency, DateOnly? completedAt, List<TaskItem> items)
+        {
+            Id = id;
+            Title = title;
+            Description = description;
+            IsTaskOverdue = isTaskOverdue;
+            DueDate = dueDate;
+            PreviousDueDate = previousDueDate;
+            MyDayDate = myDayDate;
+            Frecuency = frecuency;
+            CompletedAt = completedAt;
+            this.items = items;
+        }
+
         /// <summary>
         /// Id from a specific Task
         /// </summary>
@@ -67,7 +87,7 @@ namespace AppTareas.Models
         /// <summary>
         /// Foreign key of another task
         /// </summary>
-        public int? ParentTaskId { get; set; }
+        public int? ParentTaskId { get; set; } = null;
         /// <summary>
         /// ParentTask that owns this TaskItem
         /// </summary>

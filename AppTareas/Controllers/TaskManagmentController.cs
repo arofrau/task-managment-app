@@ -19,11 +19,11 @@ namespace AppTareas.Controllers
 
         // Get all TaskList
         [HttpGet("/api/liststasks")]
-        public ActionResult<List<TaskListResponse>> GetAllTaskList()
+        public ActionResult<List<TaskListSumaryResponse>> GetAllTaskList()
         {
             var taskslists = TaskManagmentService.GetAllTasksLists();
             
-            return taskslists.Adapt<List<TaskListResponse>>();
+            return taskslists.Adapt<List<TaskListSumaryResponse>>();
         }
 
         // Get specific TaskList with its taskItems
@@ -50,7 +50,7 @@ namespace AppTareas.Controllers
             };
             TaskManagmentService.AddTaskList(taskList);
 
-            var response = new TaskListResponse(taskList.Id, taskList.Name, taskList.Relevance, new List<TaskItem>());
+            var response = new TaskListResponse(taskList.Id, taskList.Name, taskList.Relevance, new List<TaskItemResponse>());
                 
             return CreatedAtAction(nameof(GetTaskList), new { id = taskList.Id }, response);
         }
@@ -98,7 +98,7 @@ namespace AppTareas.Controllers
         }
         // Post create a TaskItem
         [HttpPost("/api/tasks")]
-        public IActionResult CreateTaskItem(CreateTaskItem dto)
+        public IActionResult CreateTaskItem(CreateTaskItemDto dto)
         {
             var taskItem = dto.Adapt<TaskItem>();
             TaskManagmentService.AddTaskItem(taskItem);
@@ -145,7 +145,7 @@ namespace AppTareas.Controllers
         [HttpGet("/api/tasks/{id}/subtasks")]
         public ActionResult<List<TaskItemResponse>> GetAllSubTask(int id)
         {
-            var subtask = GetAllSubTask(id);
+            var subtask = TaskManagmentService.GetAllSubTask(id);
             if (subtask == null)
                 return NotFound();
             
@@ -154,9 +154,25 @@ namespace AppTareas.Controllers
         }
 
         // Put change a task  to completition
-        //[HttpPut("/api/tasks/{id}/complete")]
+        [HttpPut("/api/tasks/{id}/complete")]
+        public ActionResult<TaskItemResponse> UpdateTaskToCompleted(int id)
+        {
+            var taskItem = TaskManagmentService.UpdateCompletedStatus(id,true);
+            if (taskItem == null)
+                return NotFound();
+            
+            return taskItem.Adapt<TaskItemResponse>();
+        }
         // Put change a task to uncompleted
-        //[HttpPut("/api/tasks/{id}/uncomplete")]
+        [HttpPut("/api/tasks/{id}/uncomplete")]
+        public ActionResult<TaskItemResponse> UpdateTaskToUncompleted(int id)
+        {
+            var taskItem = TaskManagmentService.UpdateCompletedStatus(id, false);
+            if (taskItem == null)
+                return NotFound();
+
+            return taskItem.Adapt<TaskItemResponse>();
+        }
 
 
 

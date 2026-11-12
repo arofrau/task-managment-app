@@ -2,6 +2,20 @@
 {
     public class TaskList
     {
+
+
+        public TaskList()
+        {
+        }
+
+        public TaskList(int id, string name, int relevance, List<TaskItem> items)
+        {
+            Id = id;
+            Name = name;
+            Relevance = relevance;
+            this.TasksItem = items;
+        }
+
         /// <summary>
         /// Id from an specific TasksList
         /// </summary>

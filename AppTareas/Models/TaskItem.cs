@@ -14,13 +14,12 @@ namespace AppTareas.Models
     };
     public class TaskItem
     {
-        private List<TaskItem> items;
 
         public TaskItem()
         {
         }
 
-        public TaskItem(int id, string title, string? description, bool isTaskOverdue, DateTime? dueDate, DateTime? previousDueDate, DateOnly? myDayDate, Frecuency frecuency, DateOnly? completedAt, List<TaskItem> items)
+        public TaskItem(int id, string title, string? description, bool isTaskOverdue, DateTime? dueDate, DateTime? previousDueDate, DateOnly? myDayDate, Frecuency frecuency, DateOnly? completedAt, List<TaskItem> subTask, int taskListId)
         {
             Id = id;
             Title = title;
@@ -31,7 +30,8 @@ namespace AppTareas.Models
             MyDayDate = myDayDate;
             Frecuency = frecuency;
             CompletedAt = completedAt;
-            this.items = items;
+            this.SubTasks = subTask;
+            TaskListId = taskListId;
         }
 
         /// <summary>

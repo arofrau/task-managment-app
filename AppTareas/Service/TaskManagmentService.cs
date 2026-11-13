@@ -6,14 +6,14 @@ namespace AppTareas.Service
 {
     public class TaskManagmentService
     {
-        static List<TaskItem> TasksItems { get; }
-        static List<TaskList> TasksLists { get; }
+        private readonly List<TaskItem> TasksItems = new();
+        private readonly List<TaskList> TasksLists = new();
 
-        static int idTaskItem = 3;
-        static int idTaskList = 2;
-        private static DateOnly today = DateOnly.FromDateTime(DateTime.Today.Date);
+        private  int idTaskItem = 3;
+        private  int idTaskList = 2;
 
-        static TaskManagmentService()
+
+        public TaskManagmentService()
         {
             TasksItems = new List<TaskItem>
             {
@@ -27,32 +27,41 @@ namespace AppTareas.Service
             };
         }
 
-        public static List<TaskList> GetAllTasksLists() => TasksLists;
+        public  List<TaskList> GetAllTasksLists() => TasksLists;
 
-        public static TaskItem? GetTaskItem(int id)
+        public  TaskItem? GetTaskItem(int id)
         {
             var taskItem = TasksItems.FirstOrDefault(x => x.Id == id);
-            
-            var items = TasksItems.Where(t => t.ParentTaskId == id).ToList();
+            if (taskItem == null)
+                return null;
+
+
+            var subTasks = TasksItems.Where(t => t.ParentTaskId == id).ToList();
 
             return new TaskItem(taskItem.Id, taskItem.Title,taskItem.Description, 
                 taskItem.IsTaskOverdue,taskItem.DueDate, taskItem.PreviousDueDate, taskItem.MyDayDate,
-                taskItem.Frecuency, taskItem.CompletedAt,items);
+                taskItem.Frecuency, taskItem.CompletedAt, subTasks, taskItem.TaskListId);
         }
 
 
-        public static TaskList? GetTaskList(int id)
+        public  TaskList? GetTaskList(int id)
         {
             var list = TasksLists.FirstOrDefault(l => l.Id == id);
             if (list is null) return null;
 
-            var TasksItem = TasksItems.Where(t => t.TaskListId == id && t.ParentTaskId == null).ToList();
+            var TasksItem = TasksItems.Where(t => t.TaskListId == id && (t.ParentTaskId == null || t.ParentTaskId == 0)).ToList();
+            foreach(TaskItem task in TasksItem)
+            {
+                var subTaskList = TasksItems.Where(st => st.ParentTaskId == task.Id).ToList();
+
+                task.SubTasks = subTaskList;
+            }
 
             return new TaskList(list.Id,list.Name,list.Relevance, TasksItem);
 
         }
 
-        public static void AddTaskList(TaskList taskList)
+        public void AddTaskList(TaskList taskList)
         {
             taskList.Id = idTaskList++;
             TasksLists.Add(taskList);
@@ -61,12 +70,13 @@ namespace AppTareas.Service
         ///  Adds a TaskItem to a TaskList, and the TasksItems List.
         /// </summary>
         /// <param name="taskItem"></param> the taskItem we want to add, it can come with a taskList, taskListId or ParentTaskId
-        public static void AddTaskItem(TaskItem taskItem)
+        public  void AddTaskItem(TaskItem taskItem)
         {
             taskItem.Id = idTaskItem++;
 
             taskItem.IsTaskOverdue = DateTime.Today > taskItem.DueDate;
             taskItem.CompletedAt = null;
+            taskItem.CreatedTimeDate = DateTime.Today;
             
             if(taskItem.ParentTaskId.HasValue && taskItem.ParentTaskId !=0)
             {
@@ -84,23 +94,28 @@ namespace AppTareas.Service
             TasksItems.Add(taskItem);
         }
 
-        public static void DeleteTaskItem(int id)
+        public  void DeleteTaskItem(int id)
         {
             var taskItem = GetTaskItem(id);
             if (taskItem == null)
                 return;
-            TasksItems.Remove(taskItem);
+            TasksItems.RemoveAll(t => t.Id == id || t.ParentTaskId == id);
 
         }
-        public static void DeleteTaskList(int id)
+        public  void DeleteTaskList(int id)
         {
             var taskList = GetTaskList(id);
             if (taskList == null)
                 return;
-            TasksLists.Remove(taskList);
+
+            TasksLists.RemoveAll(tl => tl.Id == id);
+            foreach(var task in taskList.TasksItem)
+            {
+                DeleteTaskItem(task.Id);
+            }
 
         }
-        public static void UpdateTaskItem(TaskItem taskItem)
+        public  void UpdateTaskItem(TaskItem taskItem)
         {
             var index = TasksItems.FindIndex(index => index.Id == taskItem.Id);
 
@@ -108,15 +123,19 @@ namespace AppTareas.Service
                 return;
             foreach (TaskItem subTask in taskItem.SubTasks)
             {
-                subTask.Id = idTaskItem++;
-                subTask.TaskListId = taskItem.TaskListId;
-                subTask.Frecuency = taskItem.Frecuency;
-                subTask.MyDayDate = taskItem.MyDayDate;
-                subTask.CreatedTimeDate = DateTime.Today;
-                if (subTask.DueDate > taskItem.DueDate)
+
+                if (!TasksItems.Any(t => t.Id == subTask.Id))
                 {
-                    // -> To Do - Add an exception when the DueDate of a SubTask is later than the main Task.
-                    subTask.DueDate = taskItem.DueDate;
+                    subTask.Id = idTaskItem++;
+                    subTask.TaskListId = taskItem.TaskListId;
+                    subTask.Frecuency = taskItem.Frecuency;
+                    subTask.MyDayDate = taskItem.MyDayDate;
+                    subTask.CreatedTimeDate = DateTime.Today;
+                    if (subTask.DueDate > taskItem.DueDate)
+                    {
+                        // -> To Do - Add an exception when the DueDate of a SubTask is later than the main Task.
+                        subTask.DueDate = taskItem.DueDate;
+                    } 
                 }
                 
             }
@@ -124,7 +143,7 @@ namespace AppTareas.Service
             TasksItems[index] = taskItem;
 
         }
-        public static void UpdateTaskList(TaskList taskList)
+        public  void UpdateTaskList(TaskList taskList)
         {
             var index = TasksLists.FindIndex(index => index.Id == taskList.Id);
 
@@ -151,29 +170,25 @@ namespace AppTareas.Service
 
         }
 
-        public static List<TaskItem> GetAllDailyTask()
+        public  List<TaskItem> GetAllDailyTask()
         {
-            var list = GetAllTasksLists();
             List<TaskItem> todayList = new List<TaskItem>();
-            var currentDate = today;
-            foreach (TaskList taskList in list)
+            foreach (TaskItem task in TasksItems)
             {
-                foreach (TaskItem task in taskList.TasksItem)
-                {
-                    CalculateMyDay(ref todayList, task, currentDate);
-                }
-            }
+                    CalculateMyDay(ref todayList, task);
+             }
+            
 
             return todayList;
         }
-        private static void CalculateMyDay(ref List<TaskItem> todayList, TaskItem task, DateOnly currentDate)
+        private void CalculateMyDay(ref List<TaskItem> todayList, TaskItem task)
         {
-            if (task.MyDayDate == currentDate)
+            if (task.MyDayDate == DateOnly.FromDateTime(DateTime.Today))
             {
                 todayList.Add(task);
                 return;
             }
-            if (task.CompletedAt == currentDate)
+            if (task.CompletedAt == DateOnly.FromDateTime(DateTime.Today))
             {
                 todayList.Add(task);
                 return;
@@ -183,13 +198,13 @@ namespace AppTareas.Service
             if (task.DueDate.HasValue)
             {
                 var dueDate = DateOnly.FromDateTime(task.DueDate.Value);
-                if (dueDate == currentDate)
+                if (dueDate == DateOnly.FromDateTime(DateTime.Today))
                 {
                     todayList.Add(task);
                     return;
                 }
                     
-                else if (dueDate < currentDate && task.CompletedAt != dueDate)
+                else if (dueDate < DateOnly.FromDateTime(DateTime.Today) && task.CompletedAt != dueDate)
                 {
                     todayList.Add(task);
                     return;
@@ -200,11 +215,11 @@ namespace AppTareas.Service
             if (task.SubTasks.Count > 0)
             {
                 foreach (TaskItem subTask in task.SubTasks)
-                    CalculateMyDay(ref todayList, subTask, currentDate);
+                    CalculateMyDay(ref todayList, subTask);
             }
         }
 
-        public static List<TaskItem> GetAllSubTask(int id)
+        public  List<TaskItem> GetAllSubTask(int id)
         {
             TaskItem taskItem = GetTaskItem(id);
             var subtaskList = new List<TaskItem>();
@@ -215,22 +230,25 @@ namespace AppTareas.Service
             return subtaskList;
         }
 
-        public static TaskItem UpdateCompletedStatus(int id,bool IsNotCompleted)
+        public  TaskItem UpdateCompletedStatus(int id,bool IsNotCompleted)
         {
             TaskItem taskItem = GetTaskItem(id);
+            
             if (taskItem == null)
                 return null;
             if (IsNotCompleted == true)
             {
-                TaskCompleted(ref taskItem);
+              return TaskCompleted( taskItem);
             }
             else
             {
-                TaskUncompleted(ref taskItem);
+               return  TaskUncompleted( taskItem);
             }
-            return taskItem;
+            
+
+
         }
-        public static void TaskCompleted(ref TaskItem taskItem)
+        public  TaskItem TaskCompleted( TaskItem taskItem)
         {
 
             if (taskItem.Frecuency != 0)
@@ -271,9 +289,15 @@ namespace AppTareas.Service
 
             }
             if (taskItem.IsTaskOverdue == true) { taskItem.IsTaskOverdue = false; }
-            taskItem.CompletedAt = today;
+            taskItem.CompletedAt = DateOnly.FromDateTime(DateTime.Today);
+
+            TasksItems.Where(t => t.Id == taskItem.Id).First().CompletedAt = DateOnly.FromDateTime(DateTime.Today);
+
+            return new TaskItem(taskItem.Id, taskItem.Title, taskItem.Description, taskItem.IsTaskOverdue, 
+                taskItem.DueDate, taskItem.PreviousDueDate, taskItem.MyDayDate, taskItem.Frecuency, taskItem.CompletedAt,
+                taskItem.SubTasks,taskItem.TaskListId);
         }
-        public static void TaskUncompleted(ref TaskItem taskItem)
+        public  TaskItem TaskUncompleted( TaskItem taskItem)
         {
 
             if (taskItem.PreviousDueDate != null)
@@ -286,6 +310,12 @@ namespace AppTareas.Service
                 taskItem.IsTaskOverdue = true;
             }
             taskItem.CompletedAt = null;
+
+            TasksItems.Where(t => t.Id == taskItem.Id).First().CompletedAt = null;
+
+            return new TaskItem(taskItem.Id, taskItem.Title, taskItem.Description, taskItem.IsTaskOverdue,
+                taskItem.DueDate, taskItem.PreviousDueDate, taskItem.MyDayDate, taskItem.Frecuency, taskItem.CompletedAt,
+                taskItem.SubTasks, taskItem.TaskListId); 
             
         }
     }

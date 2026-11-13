@@ -6,14 +6,17 @@ using System.Diagnostics;
 using System.Net.WebSockets;
 using Mapster;
 
-
 namespace AppTareas.Controllers
 {
     [ApiController]
     [Route("[controller]")]
     public class TaskManagmentController : ControllerBase
     {
-        public TaskManagmentController() { }
+        private readonly TaskManagmentService _taskManagerService;
+        public TaskManagmentController(TaskManagmentService taskManagerService) 
+        {
+            _taskManagerService = taskManagerService;
+        }
 
         // TaskList
 
@@ -21,7 +24,7 @@ namespace AppTareas.Controllers
         [HttpGet("/api/liststasks")]
         public ActionResult<List<TaskListSumaryResponse>> GetAllTaskList()
         {
-            var taskslists = TaskManagmentService.GetAllTasksLists();
+            var taskslists = _taskManagerService.GetAllTasksLists();
             
             return taskslists.Adapt<List<TaskListSumaryResponse>>();
         }
@@ -31,7 +34,7 @@ namespace AppTareas.Controllers
         [HttpGet("/api/liststasks/{id}")]
         public ActionResult<TaskListResponse> GetTaskList(int id)
         {
-           var taskList = TaskManagmentService.GetTaskList(id);
+           var taskList = _taskManagerService.GetTaskList(id);
             if (taskList == null)
                 return NotFound();
             return taskList.Adapt<TaskListResponse>();
@@ -48,7 +51,7 @@ namespace AppTareas.Controllers
                 Name = taskListDto.Name,
                 Relevance = taskListDto.Relevance
             };
-            TaskManagmentService.AddTaskList(taskList);
+            _taskManagerService.AddTaskList(taskList);
 
             var response = new TaskListResponse(taskList.Id, taskList.Name, taskList.Relevance, new List<TaskItemResponse>());
                 
@@ -60,12 +63,12 @@ namespace AppTareas.Controllers
         {
             //-> TO DO. Add 403 Forbidden
 
-            var existingTaskList = TaskManagmentService.GetTaskList(id);
+            var existingTaskList = _taskManagerService.GetTaskList(id);
             if (existingTaskList == null)
                 return NotFound();
             dto.Adapt(existingTaskList);
 
-            TaskManagmentService.UpdateTaskList(existingTaskList);
+            _taskManagerService.UpdateTaskList(existingTaskList);
 
             return NoContent();
 
@@ -75,11 +78,11 @@ namespace AppTareas.Controllers
         public IActionResult DeleteTaskList(int id)
         {
             //-> TO DO. Add 403 Forbidden
-            var taskList = TaskManagmentService.GetTaskList(id);
+            var taskList = _taskManagerService.GetTaskList(id);
             if (taskList == null)
                 return NotFound();
 
-            TaskManagmentService.DeleteTaskList(id);
+            _taskManagerService.DeleteTaskList(id);
 
             return NoContent();
         }
@@ -90,7 +93,7 @@ namespace AppTareas.Controllers
         public ActionResult<TaskItemResponse> GetTaskItem(int id)
         {
 
-            var taskItem = TaskManagmentService.GetTaskItem(id);
+            var taskItem = _taskManagerService.GetTaskItem(id);
             if (taskItem == null)
                 return NotFound();
             
@@ -101,7 +104,7 @@ namespace AppTareas.Controllers
         public IActionResult CreateTaskItem(CreateTaskItemDto dto)
         {
             var taskItem = dto.Adapt<TaskItem>();
-            TaskManagmentService.AddTaskItem(taskItem);
+            _taskManagerService.AddTaskItem(taskItem);
             var response = taskItem.Adapt<TaskItemResponse>();
             return CreatedAtAction(nameof(GetTaskItem), new { id = taskItem.Id }, response);
         }
@@ -110,13 +113,13 @@ namespace AppTareas.Controllers
         public IActionResult UpdateTaskItem(int id,  UpdateTaskItem dto)
         {
             //-> TO DO. Add 403 Forbidden
-            var taskItem = TaskManagmentService.GetTaskItem(id);
+            var taskItem = _taskManagerService.GetTaskItem(id);
             
             if (taskItem == null)
                 return NotFound();
             dto.Adapt(taskItem);
 
-            TaskManagmentService.UpdateTaskItem(taskItem);
+            _taskManagerService.UpdateTaskItem(taskItem);
 
             return NoContent();
         }
@@ -129,7 +132,7 @@ namespace AppTareas.Controllers
             var taskItem = GetTaskItem(id);
             if (taskItem == null)
                 return NotFound();
-            TaskManagmentService.DeleteTaskItem(id);
+            _taskManagerService.DeleteTaskItem(id);
 
             return NoContent();
         }
@@ -137,7 +140,7 @@ namespace AppTareas.Controllers
         [HttpGet("/api/myday")]
         public ActionResult<List<TaskItemResponse>> GetMyDayTask()
         {
-            var allDailyTask = TaskManagmentService.GetAllDailyTask();
+            var allDailyTask = _taskManagerService.GetAllDailyTask();
 
             return allDailyTask.Adapt<List<TaskItemResponse>>();
         }
@@ -145,7 +148,7 @@ namespace AppTareas.Controllers
         [HttpGet("/api/tasks/{id}/subtasks")]
         public ActionResult<List<TaskItemResponse>> GetAllSubTask(int id)
         {
-            var subtask = TaskManagmentService.GetAllSubTask(id);
+            var subtask = _taskManagerService.GetAllSubTask(id);
             if (subtask == null)
                 return NotFound();
             
@@ -155,23 +158,23 @@ namespace AppTareas.Controllers
 
         // Put change a task  to completition
         [HttpPut("/api/tasks/{id}/complete")]
-        public ActionResult<TaskItemResponse> UpdateTaskToCompleted(int id)
+        public IActionResult UpdateTaskToCompleted(int id)
         {
-            var taskItem = TaskManagmentService.UpdateCompletedStatus(id,true);
+            var taskItem = _taskManagerService.UpdateCompletedStatus(id,true);
             if (taskItem == null)
                 return NotFound();
             
-            return taskItem.Adapt<TaskItemResponse>();
+            return NoContent();
         }
         // Put change a task to uncompleted
         [HttpPut("/api/tasks/{id}/uncomplete")]
-        public ActionResult<TaskItemResponse> UpdateTaskToUncompleted(int id)
+        public IActionResult UpdateTaskToUncompleted(int id)
         {
-            var taskItem = TaskManagmentService.UpdateCompletedStatus(id, false);
+            var taskItem = _taskManagerService.UpdateCompletedStatus(id, false);
             if (taskItem == null)
                 return NotFound();
 
-            return taskItem.Adapt<TaskItemResponse>();
+            return NoContent();
         }
 
 

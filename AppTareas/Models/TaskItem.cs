@@ -19,11 +19,12 @@ namespace AppTareas.Models
         {
         }
 
-        public TaskItem(int id, string title, string? description, bool isTaskOverdue, DateTime? dueDate, DateTime? previousDueDate, DateOnly? myDayDate, Frecuency frecuency, DateOnly? completedAt, List<TaskItem> subTask, int taskListId)
+        public TaskItem(int id, string title, string? description, DateTime createdTimeDate, bool isTaskOverdue, DateTime? dueDate, DateTime? previousDueDate, DateOnly? myDayDate, Frecuency frecuency, DateOnly? completedAt, List<TaskItem> subTask, int taskListId, int? parentTaskId)
         {
             Id = id;
             Title = title;
             Description = description;
+            CreatedTimeDate = createdTimeDate;
             IsTaskOverdue = isTaskOverdue;
             DueDate = dueDate;
             PreviousDueDate = previousDueDate;
@@ -32,6 +33,7 @@ namespace AppTareas.Models
             CompletedAt = completedAt;
             this.SubTasks = subTask;
             TaskListId = taskListId;
+           ParentTaskId = parentTaskId;
         }
 
         /// <summary>

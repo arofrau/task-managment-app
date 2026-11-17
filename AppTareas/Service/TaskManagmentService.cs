@@ -1,4 +1,5 @@
 ﻿using AppTareas.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualBasic;
 using System.Runtime.InteropServices;
 
@@ -17,7 +18,7 @@ namespace AppTareas.Service
         {
             TasksItems = new List<TaskItem>
             {
-                new TaskItem(){Id = 1,Title = "Task_1",CreatedTimeDate = DateTime.Today, Frecuency = Frecuency.No_Repetition,TaskListId = 1},
+                new TaskItem(){Id = 1,Title = "Task_1",CreatedTimeDate =  new DateTime(2026, 11, 20),DueDate = new DateTime(2026, 11, 20), Frecuency = Frecuency.No_Weekends,TaskListId = 1},
                 new TaskItem(){Id = 2,Title = "Task_2",CreatedTimeDate = DateTime.Today, Frecuency = Frecuency.No_Repetition,TaskListId = 1}
 
             };
@@ -36,12 +37,13 @@ namespace AppTareas.Service
                 return null;
 
 
-            var subTasks = TasksItems.Where(t => t.ParentTaskId == id).ToList();
+            var subTask = TasksItems.Where(t => t.ParentTaskId == id).ToList();
 
-            return new TaskItem(taskItem.Id, taskItem.Title,taskItem.Description, 
-                taskItem.IsTaskOverdue,taskItem.DueDate, taskItem.PreviousDueDate, taskItem.MyDayDate,
-                taskItem.Frecuency, taskItem.CompletedAt, subTasks, taskItem.TaskListId);
+            return new TaskItem(taskItem.Id,taskItem.Title,taskItem.Description,taskItem.CreatedTimeDate,taskItem.IsTaskOverdue,taskItem.DueDate,taskItem.PreviousDueDate,
+                taskItem.MyDayDate,taskItem.Frecuency,taskItem.CompletedAt,subTask,
+                taskItem.TaskListId,taskItem.ParentTaskId);
         }
+
 
 
         public  TaskList? GetTaskList(int id)
@@ -81,9 +83,17 @@ namespace AppTareas.Service
             if(taskItem.ParentTaskId.HasValue && taskItem.ParentTaskId !=0)
             {
                TaskItem taskItemParent = GetTaskItem(taskItem.ParentTaskId.Value);
-               taskItemParent.SubTasks.Add(taskItem);
+                if (taskItemParent.ParentTaskId != 0 && taskItemParent.ParentTaskId.HasValue)
+                {
+                    throw new InvalidOperationException("A subtask can't have subtasks");
+                }
+                else
+                {
+                    taskItemParent.SubTasks.Add(taskItem);
 
-               taskItem.TaskListId = taskItemParent.TaskListId;
+                    
+                    taskItem.TaskListId = taskItemParent.TaskListId;
+                }
                 
             }
             else if (taskItem.TaskListId == 0 && taskItem.TaskList != null)
@@ -123,7 +133,10 @@ namespace AppTareas.Service
                 return;
             foreach (TaskItem subTask in taskItem.SubTasks)
             {
-
+                if(TasksItems[index].ParentTaskId == 0 || TasksItems[index].ParentTask == null)
+                {
+                    throw new InvalidOperationException("A subtask cannot have a subtask");
+                }
                 if (!TasksItems.Any(t => t.Id == subTask.Id))
                 {
                     subTask.Id = idTaskItem++;
@@ -134,8 +147,9 @@ namespace AppTareas.Service
                     if (subTask.DueDate > taskItem.DueDate)
                     {
                         // -> To Do - Add an exception when the DueDate of a SubTask is later than the main Task.
-                        subTask.DueDate = taskItem.DueDate;
-                    } 
+                        throw new InvalidOperationException("A subtask DueDate cannot be later than main task Due Date");
+
+                    }
                 }
                 
             }
@@ -238,6 +252,8 @@ namespace AppTareas.Service
                 return null;
             if (IsNotCompleted == true)
             {
+
+              
               return TaskCompleted( taskItem);
             }
             else
@@ -256,46 +272,48 @@ namespace AppTareas.Service
                 // We take the last DueDate even when the task isOverDue
                 taskItem.PreviousDueDate = taskItem.DueDate;
 
-                while (taskItem.DueDate <= DateTime.Today)
-                {
+                do
+                { 
                     switch (taskItem.Frecuency)
                     {
                         case Frecuency.Daily:
-                            taskItem.DueDate.Value.AddDays(1);
+                            taskItem.DueDate = taskItem.DueDate.Value.AddDays(1);
                             break;
                         case Frecuency.Weekly:
-                            taskItem.DueDate.Value.AddDays(7);
+                            taskItem.DueDate = taskItem.DueDate.Value.AddDays(7);
                             break;
                         case Frecuency.EveryTwoWeeks:
-                            taskItem.DueDate.Value.AddDays(14);
+                            taskItem.DueDate = taskItem.DueDate.Value.AddDays(14);
                             break;
                         case Frecuency.Monthly:
-                            taskItem.DueDate.Value.AddMonths(1);
+                            taskItem.DueDate = taskItem.DueDate.Value.AddMonths(1);
 
                             break;
                         case Frecuency.Annually:
-                            taskItem.DueDate.Value.AddYears(1);
+                            taskItem.DueDate = taskItem.DueDate.Value.AddYears(1);
 
                             break;
                         case Frecuency.No_Weekends:
-                            var dayWeek = taskItem.DueDate.Value.DayOfWeek;
-                            if (dayWeek == System.DayOfWeek.Friday)
-                                taskItem.DueDate.Value.AddDays(3);
-                            else taskItem.DueDate.Value.AddDays(1);
+
+                            do
+                            {
+                                taskItem.DueDate = taskItem.DueDate.Value.AddDays(1);
+                            }
+                            while (taskItem.DueDate.Value.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday); 
                             break;
 
-                    }
-                }
+                    } 
+                } while (taskItem.DueDate.Value.Date <= DateTime.Today);
 
             }
             if (taskItem.IsTaskOverdue == true) { taskItem.IsTaskOverdue = false; }
             taskItem.CompletedAt = DateOnly.FromDateTime(DateTime.Today);
 
-            TasksItems.Where(t => t.Id == taskItem.Id).First().CompletedAt = DateOnly.FromDateTime(DateTime.Today);
+            TasksItems[TasksItems.FindIndex(t => t.Id == taskItem.Id)] = taskItem;
 
-            return new TaskItem(taskItem.Id, taskItem.Title, taskItem.Description, taskItem.IsTaskOverdue, 
+            return new TaskItem(taskItem.Id, taskItem.Title, taskItem.Description, taskItem.CreatedTimeDate, taskItem.IsTaskOverdue, 
                 taskItem.DueDate, taskItem.PreviousDueDate, taskItem.MyDayDate, taskItem.Frecuency, taskItem.CompletedAt,
-                taskItem.SubTasks,taskItem.TaskListId);
+                taskItem.SubTasks,taskItem.TaskListId, taskItem.ParentTaskId);
         }
         public  TaskItem TaskUncompleted( TaskItem taskItem)
         {
@@ -311,11 +329,11 @@ namespace AppTareas.Service
             }
             taskItem.CompletedAt = null;
 
-            TasksItems.Where(t => t.Id == taskItem.Id).First().CompletedAt = null;
+            TasksItems[TasksItems.FindIndex(t => t.Id == taskItem.Id)] = taskItem;
 
-            return new TaskItem(taskItem.Id, taskItem.Title, taskItem.Description, taskItem.IsTaskOverdue,
+            return new TaskItem(taskItem.Id, taskItem.Title, taskItem.Description,taskItem.CreatedTimeDate, taskItem.IsTaskOverdue,
                 taskItem.DueDate, taskItem.PreviousDueDate, taskItem.MyDayDate, taskItem.Frecuency, taskItem.CompletedAt,
-                taskItem.SubTasks, taskItem.TaskListId); 
+                taskItem.SubTasks, taskItem.TaskListId, taskItem.ParentTaskId); 
             
         }
     }

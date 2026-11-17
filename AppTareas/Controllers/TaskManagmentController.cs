@@ -104,7 +104,15 @@ namespace AppTareas.Controllers
         public IActionResult CreateTaskItem(CreateTaskItemDto dto)
         {
             var taskItem = dto.Adapt<TaskItem>();
-            _taskManagerService.AddTaskItem(taskItem);
+            
+            try
+            {
+                _taskManagerService.AddTaskItem(taskItem);
+            }
+            catch(InvalidOperationException ex)
+            {
+                return UnprocessableEntity(new { error = ex.Message });
+            }
             var response = taskItem.Adapt<TaskItemResponse>();
             return CreatedAtAction(nameof(GetTaskItem), new { id = taskItem.Id }, response);
         }
@@ -119,7 +127,16 @@ namespace AppTareas.Controllers
                 return NotFound();
             dto.Adapt(taskItem);
 
-            _taskManagerService.UpdateTaskItem(taskItem);
+            try
+            {
+                _taskManagerService.UpdateTaskItem(taskItem);
+
+            }
+            catch (InvalidOperationException ex)
+            {
+                return UnprocessableEntity(new { error = ex.Message });
+
+            }
 
             return NoContent();
         }

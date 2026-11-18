@@ -67,8 +67,10 @@ namespace AppTareas.Controllers
             if (existingTaskList == null)
                 return NotFound();
             dto.Adapt(existingTaskList);
-
+            
             _taskManagerService.UpdateTaskList(existingTaskList);
+
+            
 
             return NoContent();
 
@@ -113,6 +115,10 @@ namespace AppTareas.Controllers
             {
                 return UnprocessableEntity(new { error = ex.Message });
             }
+            catch (KeyNotFoundException ex)
+            {
+                return UnprocessableEntity(new { error = ex.Message });
+            }
             var response = taskItem.Adapt<TaskItemResponse>();
             return CreatedAtAction(nameof(GetTaskItem), new { id = taskItem.Id }, response);
         }
@@ -125,6 +131,8 @@ namespace AppTareas.Controllers
             
             if (taskItem == null)
                 return NotFound();
+
+            
             dto.Adapt(taskItem);
 
             try

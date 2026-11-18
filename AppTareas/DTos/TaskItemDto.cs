@@ -15,12 +15,11 @@ namespace AppTareas.DTos
         DateTime? DueDate, DateTime? PreviousDueDate, DateOnly? MyDayDate, Frecuency Frecuency,
         DateOnly? CompletedAt, bool IsTaskOverdue,
         List<TaskItemResponse>? SubTasks,
-        int TaskListId);
+        int? TaskListId);
 
     public record UpdateTaskItem(
         string Title, string? Description, DateTime? DueDate,
-        DateTime? PreviousDueDate, DateOnly? MyDayDate, Frecuency Frecuency,
-        DateOnly? CompletedAt, bool IsTaskOverdue,
+        DateOnly? MyDayDate, Frecuency Frecuency,
         List<CreateSubTaskItemDto>? SubTasks);
     public record CreateTaskItemDto(string Title, string? Description,
         DateTime? DueDate, DateOnly? MyDayDate, Frecuency Frecuency,
